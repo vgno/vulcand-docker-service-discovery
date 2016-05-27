@@ -40,9 +40,11 @@ function check(forceVhost) {
     if (upstreams.body && upstreams.body.node) {
       upstreams.body.node.nodes.forEach(node => {
         const endpoints = etcd.getSync(`${node.key}/endpoints`);
-        if (endpoints.body.node.nodes.find(vnode => vnode.key.startsWith(`${node.key}/endpoints/${IP}`))) {
-          const v = path.basename(node.key);
-          vhosts[v] = [];
+        if (!endpoints.err) {
+          if (endpoints.body.node.nodes.find(vnode => vnode.key.startsWith(`${node.key}/endpoints/${IP}`))) {
+            const v = path.basename(node.key);
+            vhosts[v] = [];
+          }
         }
       });
     }
@@ -117,7 +119,7 @@ const server = http.createServer((req, res) => {
 });
 
 
-const PORT = process.env.PORT || 34567
+const PORT = process.env.PORT || 34567;
 server.listen(PORT, () => {
   console.log('Listening on port  %d', PORT);
 
