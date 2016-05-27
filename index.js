@@ -27,7 +27,7 @@ if (!IP) {
 function check(forceVhost) {
   return co(function *() {
     const vhosts = {};
-    const containers = yield docker.listContainersAsync({all: true});
+    const containers = yield docker.listContainersAsync();
 
     if (forceVhost && !vhosts[forceVhost]) {
       vhosts[forceVhost] = [];
