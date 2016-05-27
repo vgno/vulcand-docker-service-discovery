@@ -10,6 +10,7 @@ const Promise = require('bluebird');
 const Etcd = require('node-etcd');
 const Docker = require('dockerode-bluebird');
 const values = require('lodash').values;
+const get = require('lodash').get;
 
 const docker = new Docker({socketPath: '/var/run/docker.sock'});
 const etcd = new Etcd();
@@ -41,7 +42,8 @@ function check(forceVhost) {
       upstreams.body.node.nodes.forEach(node => {
         const endpoints = etcd.getSync(`${node.key}/endpoints`);
         if (!endpoints.err) {
-          if (endpoints.body.node.nodes.find(vnode => vnode.key.startsWith(`${node.key}/endpoints/${IP}`))) {
+          const nodes = get(endpoints, 'body.node.nodes', []);
+          if (nodes.find(vnode => vnode.key.startsWith(`${node.key}/endpoints/${IP}`))) {
             const v = path.basename(node.key);
             vhosts[v] = [];
           }
@@ -80,7 +82,7 @@ function check(forceVhost) {
           res.end(`vhost(${vhost}) not found`);
         } else {
           let activePorts = [];
-          if (backends.body.node.nodes) {
+          if (backends.body.node && backends.body.node.nodes) {
             activePorts = backends.body.node.nodes.filter(node => node.key.startsWith(`/vulcand/upstreams/${vhost}/endpoints/${IP}`)).map(node => {
               const key = path.basename(node.key).split('-');
               return key[1];
