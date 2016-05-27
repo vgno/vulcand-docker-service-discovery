@@ -79,7 +79,7 @@ function check(forceVhost) {
         const ports = vhosts[vhost];
         let backends = etcd.getSync(`/vulcand/upstreams/${vhost}/endpoints`);
         if (backends.err) {
-          res.end(`vhost(${vhost}) not found`);
+          throw `vhost(${vhost}) not found`;
         } else {
           let activePorts = [];
           if (backends.body.node && backends.body.node.nodes) {
