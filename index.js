@@ -27,7 +27,7 @@ const server = http.createServer((req, res) => co(function *() {
   const query = requrl.query || {};
 
   const vhosts = {};
-  const containers = yield docker.listContainersAsync();
+  const containers = yield docker.listContainersAsync({all: true});
 
   yield Promise.each(containers, containerInfo => co(function *() {
     const container = docker.getContainer(containerInfo.Id);
@@ -50,6 +50,10 @@ const server = http.createServer((req, res) => co(function *() {
       }
     }
   }));
+
+  if (query.vhost && !vhosts[query.vhost]) {
+    vhosts[query.vhost] = [];
+  }
 
   yield Promise.each(Object.keys(vhosts), vhost =>{
     console.log(vhost);
