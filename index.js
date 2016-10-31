@@ -80,28 +80,27 @@ function check(forceVhost) {
         let backends = etcd.getSync(`/vulcand/upstreams/${vhost}/endpoints`);
         if (backends.err) {
           throw `vhost(${vhost}) not found`;
-        } else {
-          let activePorts = [];
-          if (backends.body.node && backends.body.node.nodes) {
-            activePorts = backends.body.node.nodes.filter(node => node.key.startsWith(`/vulcand/upstreams/${vhost}/endpoints/${IP}`)).map(node => {
-              const key = path.basename(node.key).split('-');
-              return key[1];
-            });
-          }
-          const portsToBeAdded = ports.filter(port => activePorts.indexOf(port) === -1);
-          const portsToBeRemoved = activePorts.filter(port => ports.indexOf(port) === -1);
-          console.log(`Will add: ${portsToBeAdded.map(port => IP + ':' + port + ' ')}`);
-          console.log(`Will remove: ${portsToBeRemoved.map(port => IP + ':' + port + '')}`);
-
-          yield Promise.each(portsToBeAdded, port => new Promise((resolve, reject) => {
-            etcd.setSync(`/vulcand/upstreams/${vhost}/endpoints/${IP}-${port}`, `http://${IP}:${port}`);
-            resolve();
-          }));
-          yield Promise.each(portsToBeRemoved, port => new Promise((resolve, reject) => {
-            etcd.delSync(`/vulcand/upstreams/${vhost}/endpoints/${IP}-${port}`);
-            resolve();
-          }));
         }
+
+        let activePorts = [];
+        if (backends.body.node && backends.body.node.nodes) {
+          activePorts = backends.body.node.nodes.filter(node => node.key.startsWith(`/vulcand/upstreams/${vhost}/endpoints/${IP}`)).map(node => {
+            const key = path.basename(node.key).split('-');
+            return key[1];
+          });
+        }
+        const portsToBeAdded = ports.filter(port => activePorts.indexOf(port) === -1);
+        const portsToBeRemoved = activePorts.filter(port => ports.indexOf(port) === -1);
+        console.log(`Will add: ${portsToBeAdded.map(port => IP + ':' + port + ' ')}`);
+        console.log(`Will remove: ${portsToBeRemoved.map(port => IP + ':' + port + '')}`);
+
+        portsToBeAdded.forEach(port => {
+          etcd.setSync(`/vulcand/upstreams/${vhost}/endpoints/${IP}-${port}`, `http://${IP}:${port}`)
+        });
+
+        portsToBeRemoved.forEach(port => {
+          etcd.delSync(`/vulcand/upstreams/${vhost}/endpoints/${IP}-${port}`);
+        });
       });
     });
   })
@@ -116,9 +115,15 @@ const server = http.createServer((req, res) => {
     res.end('OK');
   }).catch(e => {
     res.end(e.message);
-    console.error(e.message);
+    console.error(e.message ? e.message : e);
   })
 });
+
+setInteral(() => {
+  check().catch(e => {
+    console.error(e.message ? e.message : e);
+  });
+}, process.env.CHECK_INTERVAL || 5000);
 
 
 const PORT = process.env.PORT || 34567;
@@ -126,6 +131,6 @@ server.listen(PORT, () => {
   console.log('Listening on port  %d', PORT);
 
   check().catch(e => {
-    console.error(e.message);
+    console.error(e.message ? e.message : e);
   });
 });
